@@ -5,7 +5,7 @@ import 'package:mailer/smtp_server/gmail.dart';
 import 'package:http/http.dart' as http;
 import 'dart:math';
 import 'package:fugaz_movil/SecondPage.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -126,7 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       r'^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$';
                   RegExp regExp = RegExp(pattern);
                   if (value!.isEmpty) {
-                    return "La contraseña es necesaria";
+                                        return "La contraseña es necesaria";
                   } else if (value.length < 6 || value.length >= 20) {
                     return 'La contraseña debe tener 10 caracteres o más';
                   } else {
@@ -147,49 +147,53 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    final String email = _emailController.text;
-                    final String password = _password;
+  if (_formKey.currentState!.validate()) {
+    final String email = _emailController.text;
+    final String password = _password;
 
-                    // Aquí debes realizar la solicitud a tu API para verificar los datos
-                    final apiUrl =
-                        'https://apibackend-0m1w.onrender.com/api/user';
-                    final response = await http.get(Uri.parse(apiUrl));
+    final apiUrl =
+        'https://apibackend-0m1w.onrender.com/api/user';
+    final response = await http.get(Uri.parse(apiUrl));
 
-                    if (response.statusCode == 200) {
-                      final List<dynamic> users = json.decode(response.body);
+    if (response.statusCode == 200) {
+      final List<dynamic> users = json.decode(response.body);
 
-                      bool found = false;
-                      for (var user in users) {
-                        if (user['correo'] == email &&
-                            user['contraseña'] == password) {
-                          found = true;
-                          break;
-                        }
-                      }
+      bool found = false;
+      for (var user in users) {
+        if (user['correo'] == email &&
+            user['contraseña'] == password) {
+          found = true;
+          break;
+        }
+      }
 
-                      if (found) {
-                        // Si los datos son válidos, redirige a la página de pedidos
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const pedidos(),
-                          ),
-                        );
-                      } else {
-                        // Si los datos no son válidos, muestra un mensaje de error
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Usuario o Contraseña incorrectos')),
-                        );
-                      }
-                    } else {
-                      // Manejar el error si la solicitud falla
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error al cargar los usuarios')),
-                      );
-                    }
-                  }
-                },
+      if (found) {
+        // Aquí necesitamos guardar el ID del usuario en SharedPreferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        final user = users.firstWhere(
+            (user) => user['correo'] == email && user['contraseña'] == password);
+        prefs.setString('userId', user['_id']); // Guardar el ID del usuario
+
+        // Redirigir a la página de pedidos
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const pedidos(),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Usuario o Contraseña incorrectos')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar los usuarios')),
+      );
+    }
+  }
+},
+
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
