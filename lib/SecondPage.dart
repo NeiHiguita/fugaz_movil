@@ -4,6 +4,7 @@ import 'TerceraRuta.dart';
 import 'CuartaRuta.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class pedidos extends StatefulWidget {
   const pedidos({Key? key}) : super(key: key);
@@ -33,6 +34,7 @@ class _pedidosState extends State<pedidos> {
       });
     });
   }
+
   List<dynamic> _pedidos = [];
 
   @override
@@ -42,12 +44,19 @@ class _pedidosState extends State<pedidos> {
   }
 
   Future<void> _fetchPedidos() async {
-    final apiUrl = 'https://apibackend-0m1w.onrender.com/api/venta'; // Cambia por tu URL de la API
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String userId = prefs.getString('userId') ?? '';
 
+    final apiUrl = 'https://apibackend-0m1w.onrender.com/api/venta';
     final response = await http.get(Uri.parse(apiUrl));
+
     if (response.statusCode == 200) {
+      final List<dynamic> allPedidos = json.decode(response.body);
+      final List<dynamic> filteredPedidos =
+          allPedidos.where((pedido) => pedido['IdUser'] == userId).toList();
+
       setState(() {
-        _pedidos = json.decode(response.body);
+        _pedidos = filteredPedidos;
       });
     } else {
       throw Exception('Error al cargar las compras');
@@ -122,8 +131,6 @@ class _pedidosState extends State<pedidos> {
                                       Color.fromARGB(255, 255, 255, 255),
                                 ),
                                 child: Text('Ver Detalles'),
-                                
-                                
                               ),
                             ],
                           ),
@@ -216,27 +223,55 @@ class detalles extends StatelessWidget {
         title: Text('Detalles pedido'),
       ),
       body: Container(
-        margin: EdgeInsets.symmetric(horizontal: 30, vertical: 20,),
+        margin: EdgeInsets.symmetric(
+          horizontal: 30,
+          vertical: 20,
+        ),
         child: Card(
           elevation: 2,
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 50),
-            width: MediaQuery.of(context).size.width * 0.8, 
-            height: MediaQuery.of(context).size.height * 0.2, 
+            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+            width: MediaQuery.of(context).size.width * 0.8,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Producto: ${pedido['producto']}',
+                  'Fecha de Pedido: ${pedido['date_order']}',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 SizedBox(height: 10),
-                Text('Cantidad: ${pedido['cantidad']}'),
-                Text('Subtotal: \$${pedido['subtotal']}'),
+                Text('Total: \$${pedido['sale_price']}'),
+                Text('Estado: ${pedido['order_status']}'),
+                SizedBox(height: 20),
+                Text(
+                  'Detalles del Pedido:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 SizedBox(height: 10),
+                ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: pedido['detalles_venta'].length,
+                  itemBuilder: (context, index) {
+                    final detalle = pedido['detalles_venta'][index];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Producto: ${detalle['producto']}'),
+                        Text('Cantidad: ${detalle['cantidad']}'),
+                        Text('Subtotal: \$${detalle['subtotal']}'),
+                        SizedBox(height: 10),
+                        Divider(),
+                        SizedBox(height: 10),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
